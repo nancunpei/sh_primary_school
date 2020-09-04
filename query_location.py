@@ -118,13 +118,11 @@ addresses_tierA = [('tierA', i) for i in addresses_tierA]
 addresses_tierB = [('tierB', i) for i in addresses_tierB]
 addresses_tierC = [('tierC', i) for i in addresses_tierC]
 tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
-# query_location_thread(tiered_list)
+query_location_thread(tiered_list)
 
 
-fig = draw_location()
-fig.show()
+# fig = draw_location()
+# fig.show()
 
 
 
-if __name__ == '__main__':
-    local_csv_to_json()
