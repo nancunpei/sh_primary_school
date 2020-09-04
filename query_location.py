@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import threading
 import pandas as pd
-# pio.renderers.default = "firefox"
+pio.renderers.default = "firefox"
 
 
 POOL_SIZE = 100
@@ -82,6 +82,22 @@ def persist_local_csv():
             f.write(' '.join([add, str(lat), str(lon), tier, '\n']))
 
 
+def local_csv_to_json():
+    df = pd.read_csv(LOCATION_CSV, delim_whitespace=True)
+    df.to_json('location.json', orient='records', force_ascii=False)
+
+
+def query_location_thread(all_addresses):
+    threads = []
+    for (tier, address) in all_addresses:
+        t = threading.Thread(target=get_location, args=(tier, address))
+        t.start()
+        threads.append(t)
+    [t.join() for t in threads]
+    persist_local_csv()
+    local_csv_to_json()
+
+
 with open('data.json') as f:
     sh_address = json.load(f).get('data')
 
@@ -102,16 +118,13 @@ addresses_tierA = [('tierA', i) for i in addresses_tierA]
 addresses_tierB = [('tierB', i) for i in addresses_tierB]
 addresses_tierC = [('tierC', i) for i in addresses_tierC]
 tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
-threads = []
-for (tier, address) in tiered_list:
-    t = threading.Thread(target=get_location, args=(tier, address))
-    t.start()
-    threads.append(t)
-[t.join() for t in threads]
+# query_location_thread(tiered_list)
 
-persist_local_csv()
 
 fig = draw_location()
 fig.show()
 
 
+
+if __name__ == '__main__':
+    local_csv_to_json()

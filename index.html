@@ -3,43 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
-   integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
-   crossorigin=""/>
-     <!-- Make sure you put this AFTER Leaflet's CSS -->
- <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
-   integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
-   crossorigin=""></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+          integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+          crossorigin=""/>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+            integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+            crossorigin=""></script>
+
+    <script src="https://cdn.bootcss.com/proj4js/2.4.3/proj4.js"></script>
+    <script src="https://cdn.bootcss.com/proj4leaflet/1.0.1/proj4leaflet.min.js"></script>
+
+    <script src="tileLayer.baidu.js"></script>
 </head>
 <body>
- <div id="mapid" style="height:800px"></div>
-    <script>
-        var sh_coordination = [31.224361, 121.469170]
-        var mymap = L.map('mapid').setView(sh_coordination, 13)
-        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
-        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-        maxZoom: 18,
-        id: 'mapbox/streets-v11',
-        tileSize: 512,
-        zoomOffset: -1,
-        accessToken: 'pk.eyJ1Ijoia29wZWkiLCJhIjoiY2tkaDFwOTdlMXdobTJwbXBhd2tlYzYyNiJ9.dwMoIYpHrHgrGTCSrGnHSA'
-        }).addTo(mymap);
-        var marker = L.marker(sh_coordination).addTo(mymap);
-        var circle = L.circle(sh_coordination, {
-            color: 'red',
-            fillColor: '#ff366c',
-            fillOpacity: 0.1,
-            radius: 500
-        }).addTo(mymap);
-        var polygon = L.polygon([
-            [sh_coordination[0], sh_coordination[1]-0.08],
-            [sh_coordination[0]+0.02, sh_coordination[1]-0.06],
-            [sh_coordination[0]-0.04, sh_coordination[1]-0.047]
-        ]).addTo(mymap);
+<div id="mapid" style="height:800px"></div>
 
-        marker.bindPopup("<b>Hello world!</b><br>I am a popup.").openPopup();
-        circle.bindPopup("I am a circle.");
-        polygon.bindPopup("I am a polygon.");
-    </script>
+
+<script>
+    let schools
+    schools = (function () {
+        $.ajax({
+            dataType: "json",
+            url: 'location.json',
+            async: false,
+            success: function (data) {
+                schools = data
+            }
+        });
+        return schools
+    })()
+    var sh_coordination = [31.224361, 121.469170]
+    var schools_coordinations = $.map(schools, function (d) {
+        return [[d.lat, d.lon]]
+    })
+
+    var greenIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var blueIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var yellowIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var makeMarkers = function (options) {
+        let markers = [];
+        switch (options) {
+            case 'tierA':
+            default:
+                schools.filter(d => d.tier === 'tierA').map((co, index) => {
+                    var m = L.marker([co.lat, co.lon], {icon: greenIcon})
+                    m.bindPopup("<b>" + schools[index].address + ',' + schools[index].tier + "</b>")
+                    markers.push(m)
+                })
+                break
+            case 'tierB':
+                schools.filter(d => d.tier === 'tierB').map((co, index) => {
+                    var m = L.marker([co.lat, co.lon], {icon: blueIcon})
+                    m.bindPopup("<b>" + schools[index].address + ',' + schools[index].tier + "</b>")
+                    markers.push(m)
+                })
+                break
+            case 'tierC':
+                schools.filter(d => d.tier === 'tierC').map((co, index) => {
+                    var m = L.marker([co.lat, co.lon], {icon: yellowIcon})
+                    m.bindPopup("<b>" + schools[index].address + ',' + schools[index].tier + "</b>")
+                    markers.push(m)
+                })
+                break
+        }
+        return L.layerGroup(markers)
+    }
+
+    var mymap = L.map('mapid', {
+        crs: L.CRS.Baidu,
+        minZoom: 3,
+        maxZoom: 18,
+        attributionControl: false,
+        center: sh_coordination,
+        zoom: 12
+    });
+
+    L.control.layers({
+            "百度地图": L.tileLayer.baidu({layer: 'vec'}).addTo(mymap),
+            "百度卫星": L.tileLayer.baidu({layer: 'img'}),
+            "百度地图-大字体": L.tileLayer.baidu({layer: 'vec', bigfont: true}),
+            "百度卫星-大字体": L.tileLayer.baidu({layer: 'img', bigfont: true}),
+            "自定义样式-黑色地图": L.tileLayer.baidu({layer: 'custom', customid: 'dark'}),
+            "自定义样式-蓝色地图": L.tileLayer.baidu({layer: 'custom', customid: 'midnight'}) //自定义样式地图，customid可选值：dark,midnight,grayscale,hardedge,light,redalert,googlelite,grassgreen,pink,darkgreen,bluish
+        },
+        {
+            "tierA school": makeMarkers('tierA'),
+            "tierB school": makeMarkers('tierB'),
+            "tierC school": makeMarkers('tierC'),
+        },
+        {position: "topright"}).addTo(mymap);
+
+
+</script>
 </body>
 </html>
