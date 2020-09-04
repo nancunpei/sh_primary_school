@@ -4,16 +4,21 @@ from urllib.parse import quote
 import json
 import plotly.graph_objects as go
 import plotly.io as pio
-pio.renderers.default = "firefox"
+import threading
+import pandas as pd
+# pio.renderers.default = "firefox"
 
-POOL_SIZE = 512
+
+POOL_SIZE = 100
 
 address_list = []
 lat_list = []
 lon_list = []
+tier_list = []
+LOCATION_CSV = 'location.csv'
 
 
-def get_location(address):
+def get_location(tier, address):
     url = 'http://api.map.baidu.com/geocoding/v3/?address='
     output = 'json'
     ak = 'FAjgfSoSquGTrL5cedE50HxhTl7EUqN7'  # 需填入自己申请应用后生成的ak
@@ -31,9 +36,16 @@ def get_location(address):
     address_list.append(address)
     lat_list.append(lat)
     lon_list.append(lon)
+    tier_list.append(tier)
 
 
 def draw_location():
+    df = pd.read_csv(LOCATION_CSV, delim_whitespace=True)
+    address_list = df['address'].to_list()
+    lat_list = df['lat'].to_list()
+    lon_list = df['lon'].to_list()
+    tier_list = df['tier'].to_list()
+
     mapbox_access_token = 'pk.eyJ1Ijoia29wZWkiLCJhIjoiY2tkaDFwOTdlMXdobTJwbXBhd2tlYzYyNiJ9.dwMoIYpHrHgrGTCSrGnHSA'
     fig = go.Figure(go.Scattermapbox(
         lat=lat_list,
@@ -62,27 +74,44 @@ def draw_location():
     return fig
 
 
-if __name__ == '__main__':
-    with open('data.json') as f:
-        sh_address = json.load(f).get('data')
+def persist_local_csv():
+    header = "address lat lon tier"
+    with open(LOCATION_CSV, 'w') as f:
+        f.write(header+'\n')
+        for add, lat, lon, tier in zip(address_list, lat_list, lon_list, tier_list):
+            f.write(' '.join([add, str(lat), str(lon), tier, '\n']))
 
-    addresses = []
-    for item in sh_address:
-        tierA = item.get('tierA').map(lambda x: '上海市' + x if not x.startswith('上海') else x)
-        tierB = item.get('tierB').map(lambda x: '上海市' + x if not x.startswith('上海') else x)
-        tierC = item.get('tierC').map(lambda x: '上海市' + x if not x.startswith('上海') else x)
-        addresses.extend(tierA).extend(tierB).extend(tierC)
-    print(addresses)
-    for i in addresses:
-        get_location(i)
-    # # t1 = time.time()
-    # pool = threadpool.ThreadPool(POOL_SIZE)
-    fig = draw_location()
-    fig.show()
-    # my_requests = threadpool.makeRequests(get_location, addresses)
-    # [pool.putRequest(req) for req in my_requests]
-    # pool.wait()
-    # pool.dismissWorkers(POOL_SIZE, do_join=True)  # 完成后退出
-    # t2 = time.time()
-    # print(t2-t1)
+
+with open('data.json') as f:
+    sh_address = json.load(f).get('data')
+
+addresses_tierA = []
+addresses_tierB = []
+addresses_tierC = []
+for item in sh_address:
+    for tier in ['tierA', 'tierB', 'tierC']:
+        l = list(map(lambda x: '上海市' + x if not x.startswith('上海') else x, item.get(tier)))
+        if tier == 'tierA':
+            addresses_tierA.extend(l)
+        elif tier == 'tierB':
+            addresses_tierB.extend(l)
+        else:
+            addresses_tierC.extend(l)
+
+addresses_tierA = [('tierA', i) for i in addresses_tierA]
+addresses_tierB = [('tierB', i) for i in addresses_tierB]
+addresses_tierC = [('tierC', i) for i in addresses_tierC]
+tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
+threads = []
+for (tier, address) in tiered_list:
+    t = threading.Thread(target=get_location, args=(tier, address))
+    t.start()
+    threads.append(t)
+[t.join() for t in threads]
+
+persist_local_csv()
+
+fig = draw_location()
+fig.show()
+
 
