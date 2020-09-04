@@ -72,23 +72,23 @@
         switch (options) {
             case 'tierA':
             default:
-                schools.filter(d => d.tier === 'tierA').map((co, index) => {
+                schools.filter(d => d.tier === 'tierA').map((co) => {
                     var m = L.marker([co.lat, co.lon], {icon: greenIcon})
-                    m.bindPopup("<b>" + schools[index].address + ',' + schools[index].tier + "</b>")
+                    m.bindPopup("<b>" + co.address + ',' + co.tier + "</b>")
                     markers.push(m)
                 })
                 break
             case 'tierB':
-                schools.filter(d => d.tier === 'tierB').map((co, index) => {
+                schools.filter(d => d.tier === 'tierB').map((co) => {
                     var m = L.marker([co.lat, co.lon], {icon: blueIcon})
-                    m.bindPopup("<b>" + schools[index].address + ',' + schools[index].tier + "</b>")
+                    m.bindPopup("<b>" + co.address + ',' + co.tier + "</b>")
                     markers.push(m)
                 })
                 break
             case 'tierC':
-                schools.filter(d => d.tier === 'tierC').map((co, index) => {
+                schools.filter(d => d.tier === 'tierC').map((co) => {
                     var m = L.marker([co.lat, co.lon], {icon: yellowIcon})
-                    m.bindPopup("<b>" + schools[index].address + ',' + schools[index].tier + "</b>")
+                    m.bindPopup("<b>" + co.address + ',' + co.tier + "</b>")
                     markers.push(m)
                 })
                 break
