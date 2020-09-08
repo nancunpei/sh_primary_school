@@ -98,6 +98,9 @@ def query_location_thread(all_addresses):
     local_csv_to_json()
 
 
+def get_boundary():
+    url = 'http://api.map.baidu.com/place/v2/search?region=北京&output=json&ak='
+
 with open('data.json') as f:
     sh_address = json.load(f).get('data')
 

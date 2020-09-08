@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+	<script src="https://code.jquery.com/jquery-2.1.4.js"></script>
+    <script type="text/javascript" src="http://api.map.baidu.com/api?v=1.5&ak=FMVNTALTj4lh4g9W4dlwvtWRQ8E9HFxZ"></script>
+    <script src="assets/select2.min.js"></script>
+    <link href="assets/select2.min.css" rel="stylesheet" />
+    <link href="assets/bulma.css" rel="stylesheet" />
+    <link href="src/style.css" rel="stylesheet" />
+</head>
+<body style="background: -webkit-linear-gradient(left, white, white); background: -moz-linear-gradient(left, white, white);">
+    <div class="container">
+        <section class="hero">
+            <div class="hero-body">
+                <div class="container">
+                <h1 class="title">自定义地图</h1>
+                <h2 class="subtitle">
+                    自定义组合多个行政区域地图，预览并且生成geojson格式文件，可用于可视化开发库（比如<a href="http://http://echarts.baidu.com/">Echarts</a>）的地图控件中。
+                </h2>
+                </div>
+            </div>
+        </section>
+        <section>
+        <div class="field">
+            <label class="label">预览中心地点</label>
+            <div class="control">
+                <select class="center-point" style="width:450px;">
+                    <option value="上海市">上海市</option>
+                    <option value="静安区">静安区</option>
+                </select>
+            </div>
+            <p class="help">单选，可输入；预览地图的中心点（比如：上海市）</p>
+        </div>
+        <div class="field">
+            <label class="label">行政区域列表 *</label>
+            <div class="control">
+                <select class="areas" multiple="multiple" style="width: 450px">
+                    <option value="上海市">上海市</option>
+                    <option value="静安区">静安区</option>
+                </select>
+            </div>
+            <p class="help">多选，可输入；区域之间不能覆盖（比如选：静安区;南京市;福建省;）</p>
+            <p class="help">行政区域最小颗粒度和<a href="http://map.baidu.com">百度地图</a>一致</p>
+        </div>
+        <div class="field">
+            <label>初始倍率</label>
+            <div class="control">
+                <select class="level" style="width: 450px">
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15">15</option>
+                    <option value="16">16</option>
+                    <option value="17">17</option>
+                    <option value="18">18</option>
+                    <option value="19">19</option>
+                </select>
+            </div>
+            <p class="help">预览地图的初始放大倍率</p>
+        </div>
+        <div class="field is-grouped">
+            <div class="control">
+                <button class="button is-link" id="search">生成地图文件并预览</button>
+            </div>
+            <div class="control">
+                <a class="is-link" id="download" style="visibility: hidden">下载地图文件</a>
+            </div>
+        </div>
+        <div class="field">
+            <div style="height:500px;border:1px solid gray" id="map"></div>
+        </div>
+        </section>
+    </div>
+</body>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var centerPoint = $(".center-point").select2({
+            tags: true
+        });
+        var areas = $(".areas").select2({
+            tags: true
+        });
+        function prepareDownload(data, name) {
+            var text = JSON.stringify(data);
+            var type = 'text/plain';
+            var downbtn = document.getElementById("download");
+            var file = new Blob([text], {type: type});
+            downbtn.href = URL.createObjectURL(file);
+            downbtn.download = name + '.json';
+            downbtn.style.visibility = 'visible';
+        }
+
+        function search() {
+            var initGeojson = {
+                type: "FeatureCollection",
+                features: []
+            };
+
+            var level = parseInt($(".level").val());
+            var areasSelected = $(".areas").val();
+            var mapCenter = $(".center-point").val() || areasSelected[0];
+
+            if (mapCenter) {
+                var map = new BMap.Map("map", {enableMapClick: false});
+                // 初始化地图,设置中心点坐标和地图级别
+                map.centerAndZoom(mapCenter, level);
+                var top_left_control = new BMap.ScaleControl({anchor: BMAP_ANCHOR_TOP_LEFT});// 左上角，添加比例尺
+                var top_left_navigation = new BMap.NavigationControl();  //左上角，添加默认缩放平移控件
+                map.addControl(top_left_control)
+                map.addControl(top_left_navigation)
+            }
+
+            //获取行政区域的边界
+            var bdary = new BMap.Boundary();
+
+            function generate(array, callback) {
+                // 递归获取boundary数据
+                var value = array.pop(0);
+                if (value === undefined) {
+                    // 递归结束
+                    callback(initGeojson, mapCenter);
+                    return
+                }
+                bdary.get(value, function (rs) { //获取行政区域
+                    var count = rs.boundaries.length; //有多少个地理区间
+                    var pgType = 'Polygon';
+                    if (count > 1) {
+                        pgType = 'MultiPolygon';
+                    }
+                    var pgs = {
+                        type: 'Feature',
+                        properties: {
+                            name: value
+                        },
+                        geometry: {
+                            type: pgType,
+                            coordinates: []
+                        }
+                    };
+                    for (var i = 0; i < count; i++) {
+                        var bds = rs.boundaries[i];
+                        //建立多边形覆盖物
+                        var polygon = new BMap.Polygon(bds, {
+                            strokeWeight: 2,
+                            strokeOpacity: 1,
+                            StrokeStyle: "solid",
+                            strokeColor: "#9730f7",
+                            fillOpacity: 0.01
+                        });
+                        map.addOverlay(polygon); //添加覆盖物
+                        //填充pg
+                        var bdsArray = bds.split(';');
+                        var line = [];
+                        $.each(bdsArray, function (idx, point) {
+                            var p = point.split(',');
+                            var x = $.trim(p[0]), y = $.trim(p[1]);
+                            line.push([y, x])
+                        });
+                        var pg = [line]
+                        if (pgType === 'MultiPolygon') {
+                            pgs.geometry.coordinates.push(pg)
+                        } else {
+                            pgs.geometry.coordinates = pg
+                        }
+                    }
+                    initGeojson.features.push(pgs);
+                    generate(array, callback);
+                });
+            }
+
+            generate(areasSelected, prepareDownload);
+        }
+
+        $('#search').on('click', function(){
+            search();
+        })
+    })
+</script>
+</html>
