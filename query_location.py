@@ -6,6 +6,9 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import threading
 import pandas as pd
+
+from tencent_query.query import query_location_tencent
+
 pio.renderers.default = "firefox"
 
 
@@ -87,10 +90,13 @@ def local_csv_to_json():
     df.to_json('location.json', orient='records', force_ascii=False)
 
 
-def query_location_thread(all_addresses):
+def query_location_thread(all_addresses, target='baidu'):
     threads = []
     for (tier, address) in all_addresses:
-        t = threading.Thread(target=get_location, args=(tier, address))
+        if target =='tencent':
+            t = threading.Thread(target=query_location_tencent, args=(tier, address))
+        else:
+            t = threading.Thread(target=get_location, args=(tier, address))
         t.start()
         threads.append(t)
     [t.join() for t in threads]
