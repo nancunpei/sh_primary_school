@@ -7,7 +7,7 @@ query shanghai primary school location and display on map
 ### usage
 ```bash
 pip install -r requirements.txt
-python query_location.py
+python main.py
 python -m http.server 
 #open index.html in broswer
 http://localhost:8000
