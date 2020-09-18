@@ -39,7 +39,7 @@ def query_location_thread(all_addresses, target=''):
         if target == 'tencent':
             t = threading.Thread(target=query_location_tencent, args=(tier, address, queue, semaphore))
         else:
-            t = threading.Thread(target=query_location_baidu, args=(tier, address, queue))
+            t = threading.Thread(target=query_location_baidu, args=(tier, address, queue, semaphore))
         t.start()
         threads.append(t)
     [t.join() for t in threads]
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     addresses_tierC = [('tierC', i) for i in addresses_tierC]
     tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
     query_location_thread(tiered_list)
-    locations = compose_location_data()
-    translate_from_others(locations)
+    # locations = compose_location_data()
+    # translate_from_others(locations)
 
 
