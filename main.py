@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import json
 from queue import Queue
-
+import click
 import plotly.io as pio
 import threading
 import pandas as pd
@@ -32,14 +32,17 @@ def local_csv_to_json():
 
 
 def query_location_thread(all_addresses, target=''):
+    if not target: return
     threads = []
     queue = Queue()
     semaphore = threading.Semaphore(MAX_CONNECTIONS)
     for (tier, address) in all_addresses:
         if target == 'tencent':
             t = threading.Thread(target=query_location_tencent, args=(tier, address, queue, semaphore))
-        else:
+        elif target == 'baidu':
             t = threading.Thread(target=query_location_baidu, args=(tier, address, queue, semaphore))
+        else:
+            pass
         t.start()
         threads.append(t)
     [t.join() for t in threads]
@@ -54,8 +57,7 @@ def compose_location_data():
     coordinate_list = [str(d.get('lat')) + ',' + str(d.get('lon')) for d in data]
     return coordinate_list
 
-
-if __name__ == '__main__':
+def compose_tiered_addresses():
     with open('data.json') as f:
         sh_address = json.load(f).get('data')
 
@@ -76,8 +78,22 @@ if __name__ == '__main__':
     addresses_tierB = [('tierB', i) for i in addresses_tierB]
     addresses_tierC = [('tierC', i) for i in addresses_tierC]
     tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
-    query_location_thread(tiered_list)
-    # locations = compose_location_data()
-    # translate_from_others(locations)
+    return tiered_list
 
 
+@click.command()
+@click.option('--target', default='', help='select the map api to run')
+@click.option('--convert', default=False, help='whether need to convert location data')
+def main(target, convert):
+    if target:
+        tiered_list = compose_tiered_addresses()
+        query_location_thread(tiered_list, target)
+    if convert:
+        import os
+        os.environ['WX_KEY'] = 
+        locations = compose_location_data()
+        translate_from_others(locations)
+
+
+if __name__ == '__main__':
+    main()
