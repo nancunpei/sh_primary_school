@@ -89,8 +89,6 @@ def main(target, convert):
         tiered_list = compose_tiered_addresses()
         query_location_thread(tiered_list, target)
     if convert:
-        import os
-        os.environ['WX_KEY'] = 
         locations = compose_location_data()
         translate_from_others(locations)
 
