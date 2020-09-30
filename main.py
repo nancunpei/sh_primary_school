@@ -13,17 +13,17 @@ from tencent_map.translate import translate_from_others
 
 pio.renderers.default = "firefox"
 
-
-MAX_CONNECTIONS = 4
+MAX_CONNECTIONS = 5
 
 
 def persist_local_csv(queue):
-    header = "address lat lon tier"
+    header = "address lat lon tier district"
     with open(LOCATION_CSV, 'w') as f:
         f.write(header+'\n')
         for q in range(queue.qsize()):
             data = queue.get()
-            f.write(' '.join([data.get('address'), str(data.get('lat')), str(data.get('lon')), data.get('tier'), '\n']))
+            f.write(' '.join([data.get('address'), str(data.get('lat')), str(
+                data.get('lon')), data.get('tier'), data.get('district'), '\n']))
 
 
 def local_csv_to_json():
@@ -31,16 +31,27 @@ def local_csv_to_json():
     df.to_json('location.json', orient='records', force_ascii=False)
 
 
+def json2jsonl():
+    json_file = json.load(open('location_wx.json'))
+    with open('location_wx.jsonl', 'w') as outfile:
+        for entry in json_file:
+            json.dump(entry, outfile, ensure_ascii=False)
+            outfile.write('\n')
+
+
 def query_location_thread(all_addresses, target=''):
-    if not target: return
+    if not target:
+        return
     threads = []
     queue = Queue()
     semaphore = threading.Semaphore(MAX_CONNECTIONS)
-    for (tier, address) in all_addresses:
+    for (address, tier, district) in all_addresses:
         if target == 'tencent':
-            t = threading.Thread(target=query_location_tencent, args=(tier, address, queue, semaphore))
+            t = threading.Thread(target=query_location_tencent, args=(
+                tier, address, district, queue, semaphore))
         elif target == 'baidu':
-            t = threading.Thread(target=query_location_baidu, args=(tier, address, queue, semaphore))
+            t = threading.Thread(target=query_location_baidu, args=(
+                tier, address, district, queue, semaphore))
         else:
             pass
         t.start()
@@ -54,8 +65,10 @@ def query_location_thread(all_addresses, target=''):
 def compose_location_data():
     with open('location.json') as f:
         data = json.load(f)
-    coordinate_list = [str(d.get('lat')) + ',' + str(d.get('lon')) for d in data]
+    coordinate_list = [str(d.get('lat')) + ',' +
+                       str(d.get('lon')) for d in data]
     return coordinate_list
+
 
 def compose_tiered_addresses():
     with open('data.json') as f:
@@ -64,20 +77,23 @@ def compose_tiered_addresses():
     addresses_tierA = []
     addresses_tierB = []
     addresses_tierC = []
-    for item in sh_address:
+    for district_schools in sh_address:
+        district = district_schools.get('district')
         for tier in ['tierA', 'tierB', 'tierC']:
-            l = list(map(lambda x: '上海市' + x if not x.startswith('上海') else x, item.get(tier)))
+            schools = list(map(lambda x:
+                               ('上海市' + x, tier, district) if not x.startswith('上海') else (x, tier, district), district_schools.get(tier)))
             if tier == 'tierA':
-                addresses_tierA.extend(l)
+                addresses_tierA.extend(schools)
             elif tier == 'tierB':
-                addresses_tierB.extend(l)
+                addresses_tierB.extend(schools)
             else:
-                addresses_tierC.extend(l)
+                addresses_tierC.extend(schools)
 
-    addresses_tierA = [('tierA', i) for i in addresses_tierA]
-    addresses_tierB = [('tierB', i) for i in addresses_tierB]
-    addresses_tierC = [('tierC', i) for i in addresses_tierC]
+    # addresses_tierA = [('tierA', i) for i in addresses_tierA]
+    # addresses_tierB = [('tierB', i) for i in addresses_tierB]
+    # addresses_tierC = [('tierC', i) for i in addresses_tierC]
     tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
+    print(tiered_list)
     return tiered_list
 
 
@@ -89,9 +105,13 @@ def main(target, convert):
         tiered_list = compose_tiered_addresses()
         query_location_thread(tiered_list, target)
     if convert:
+        import os
+        if not os.getenv('WX_KEY'):
+            raise KeyError('please input wx map key')
         locations = compose_location_data()
         translate_from_others(locations)
 
 
 if __name__ == '__main__':
     main()
+    # json2jsonl()
