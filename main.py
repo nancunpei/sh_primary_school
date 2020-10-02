@@ -2,16 +2,13 @@
 import json
 from queue import Queue
 import click
-import plotly.io as pio
 import threading
 import pandas as pd
 
-from config.config import LOCATION_CSV
+from config.config import LOCATION_CSV, LOCATION_JSON, LOCATION_WX_JSONL, LOCATION_WX_JSON, BASE_DATA
 from tencent_map.query import query_location_tencent
 from baidu_map.query import get_location as query_location_baidu
 from tencent_map.translate import translate_from_others
-
-pio.renderers.default = "firefox"
 
 MAX_CONNECTIONS = 5
 
@@ -20,7 +17,7 @@ def persist_local_csv(queue):
     header = "address lat lon tier district"
     with open(LOCATION_CSV, 'w') as f:
         f.write(header+'\n')
-        for q in range(queue.qsize()):
+        for _ in range(queue.qsize()):
             data = queue.get()
             f.write(' '.join([data.get('address'), str(data.get('lat')), str(
                 data.get('lon')), data.get('tier'), data.get('district'), '\n']))
@@ -28,15 +25,7 @@ def persist_local_csv(queue):
 
 def local_csv_to_json():
     df = pd.read_csv(LOCATION_CSV, delim_whitespace=True)
-    df.to_json('location.json', orient='records', force_ascii=False)
-
-
-def json2jsonl():
-    json_file = json.load(open('location_wx.json'))
-    with open('location_wx.jsonl', 'w') as outfile:
-        for entry in json_file:
-            json.dump(entry, outfile, ensure_ascii=False)
-            outfile.write('\n')
+    df.to_json(LOCATION_JSON, orient='records', force_ascii=False)
 
 
 def query_location_thread(all_addresses, target=''):
@@ -63,7 +52,7 @@ def query_location_thread(all_addresses, target=''):
 
 
 def compose_location_data():
-    with open('location.json') as f:
+    with open(LOCATION_JSON) as f:
         data = json.load(f)
     coordinate_list = [str(d.get('lat')) + ',' +
                        str(d.get('lon')) for d in data]
@@ -71,7 +60,7 @@ def compose_location_data():
 
 
 def compose_tiered_addresses():
-    with open('data.json') as f:
+    with open(BASE_DATA) as f:
         sh_address = json.load(f).get('data')
 
     addresses_tierA = []
@@ -89,9 +78,6 @@ def compose_tiered_addresses():
             else:
                 addresses_tierC.extend(schools)
 
-    # addresses_tierA = [('tierA', i) for i in addresses_tierA]
-    # addresses_tierB = [('tierB', i) for i in addresses_tierB]
-    # addresses_tierC = [('tierC', i) for i in addresses_tierC]
     tiered_list = addresses_tierA + addresses_tierB + addresses_tierC
     print(tiered_list)
     return tiered_list
