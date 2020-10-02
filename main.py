@@ -86,7 +86,8 @@ def compose_tiered_addresses():
 @click.command()
 @click.option('--target', default='', help='select the map api to run')
 @click.option('--convert', default=False, help='whether need to convert location data')
-def main(target, convert):
+@click.option('--tojsonl', default=False, help='whether need to convert json to jsonline data')
+def main(target, convert, tojsonl):
     if target:
         tiered_list = compose_tiered_addresses()
         query_location_thread(tiered_list, target)
@@ -96,6 +97,9 @@ def main(target, convert):
             raise KeyError('please input wx map key')
         locations = compose_location_data()
         translate_from_others(locations)
+    if tojsonl:
+        from utils.utils import json2jsonl
+        json2jsonl()
 
 
 if __name__ == '__main__':

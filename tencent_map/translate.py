@@ -1,7 +1,7 @@
 import json
 
 import requests
-from config.config import WX_KEY
+from config.config import WX_KEY, LOCATION_JSON, LOCATION_WX_JSON
 
 
 SOGOU_TYPE = 2
@@ -14,7 +14,7 @@ GPS_TYPE = 1
 def translate_from_others(locations, t=BAIDU_TYPE):
     url = 'https://apis.map.qq.com/ws/coord/v1/translate'
     key = WX_KEY
-    with open('location.json') as f:
+    with open(LOCATION_JSON) as f:
         data = json.load(f)
         print(data)
     for index, l in enumerate(locations):
@@ -26,7 +26,7 @@ def translate_from_others(locations, t=BAIDU_TYPE):
         import time
         time.sleep(0.5)
 
-    with open('location_wx.json', 'w') as f:
+    with open(LOCATION_WX_JSON, 'w') as f:
         json.dump(data, f, ensure_ascii=False)
 
 
